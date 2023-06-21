@@ -25,4 +25,4 @@ pktcat -rs
 ```
 TODO:
 wirte/find a pktprint utility witch would decode the packet and print it human readable format/json(?)... etc
-like the tcpdump does but separate utility that receives the packet from stdin
+like the tcpdump does but separate utility that receives the packet from stdin (and vice versa - json/human-readable -> hex)
