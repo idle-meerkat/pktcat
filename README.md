@@ -1,7 +1,7 @@
 # pktcat
 
-packet sniffer and sender for linux.
-Writes packets received from AF_PACKET raw socket to stdout in
+packet sniffer and sender for linux. Simply a wrapper utility over AF_PACKET raw socket.
+Writes packets received from the socket to stdout in
 "\<iface\> \<pkthex\>\\n" format and writes packets received from stdin in
 "\<iface\> <pkthex\>\\n" format to the socket.
 
