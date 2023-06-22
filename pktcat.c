@@ -1,5 +1,6 @@
 /* unlicense vboyko 2022 */
 /* arm-linux-musleabihf-cc -static -s -O2 -Wextra -Wall -pedantic -o pktcat pktcat.c */
+/* arm-linux-musleabihf-cc -static -s -O2 -Wextra -Wall -pedantic -o pktcat utils/pktcat.c */
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -250,9 +251,11 @@ int main(int argc, char *argv[])
     {
         failed = 0;
 
-        ifname = (char *)buf;
-        for (i = 0; ifname[i] && ifname[i] != ' '; ++i);
-        ifname[i] = 0;
+        for (i = 0; buf[i] == ' '; ++i);
+
+        ifname = (char *)&buf[i];
+        for (; buf[i] && buf[i] != ' '; ++i);
+        buf[i] = 0;
 
         while (buf[++i] == ' ');
 
