@@ -20,6 +20,7 @@
 static int flag_ifidx = 0;
 static int flag_recv = 0;
 static int flag_send = 0;
+static int flag_ignore_outgoing = 0;
 
 static const unsigned char hex2ch[] = "0123456789abcdef";
 static int ch2hex(int ch)
@@ -198,7 +199,9 @@ int main(int argc, char *argv[])
                  flag_recv = !flag_recv;
                else if (*o == 's')
                  flag_send = !flag_send;
-               else if (*o == 'I') {
+               else if (*o == 'o') {
+                 flag_ignore_outgoing = !flag_ignore_outgoing;
+               } else if (*o == 'I') {
                  if (o[1] || !(bindifname = *++argv)) {
                    LOG("incomplete flag '%c'", *o);
                    exit(1);
@@ -220,7 +223,16 @@ int main(int argc, char *argv[])
 
     if (setsockopt(fd, SOL_PACKET, PACKET_AUXDATA, &(int){1}, sizeof(int)) < 0)
     {
-        LOG("setsockopt(SOL_PACKET): %s", strerror(errno));
+        LOG("setsockopt(SOL_PACKET, PACKET_AUXDATA): %s", strerror(errno));
+        exit(1);
+    }
+
+    if (flag_ignore_outgoing &&
+        (setsockopt(fd, SOL_PACKET, PACKET_IGNORE_OUTGOING,
+                    &(int){1}, sizeof(int)) < 0))
+    {
+        LOG("setsockopt(SOL_PACKET, PACKET_IGNORE_OUTGOING): %s",
+            strerror(errno));
         exit(1);
     }
 
@@ -296,3 +308,4 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+
