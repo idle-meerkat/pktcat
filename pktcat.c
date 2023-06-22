@@ -7,7 +7,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <poll.h>
 #include <pthread.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
@@ -84,7 +83,7 @@ static int ifid2idx(const char ifid[IF_NAMESIZE], unsigned *if_idx)
   return 0;
 }
 
-static void *ifpoll(void *p) {
+static void *ifrecv(void *p) {
     char ifname[IF_NAMESIZE];
     static unsigned char pkt[10240];
     ssize_t i, psz;
@@ -183,6 +182,7 @@ static void *ifpoll(void *p) {
           putchar(hex2ch[pkt[i] & 0xF]);
         }
         putchar('\n');
+        fflush(stdout);
     }
 }
 
@@ -257,6 +257,9 @@ int main(int argc, char *argv[])
        ++argv;
     }
 
+    if (!flag_send)
+        fclose(stdin);
+
     if ((fd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
         LOG("socket: %s", strerror(errno));
         exit(1);
@@ -293,7 +296,7 @@ int main(int argc, char *argv[])
     }
 
     if (flag_recv) {
-      if (pthread_create(&pt, 0, ifpoll, &fd)) {
+      if (pthread_create(&pt, 0, ifrecv, &fd)) {
           LOG("pthread_create: %s", strerror(errno));
           exit(1);
       }
