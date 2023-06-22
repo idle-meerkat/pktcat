@@ -1,5 +1,5 @@
 /* unlicense vboyko 2022 */
-/* arm-linux-musleabihf-cc -static -s -O2 -Wextra -Wall -pedantic -o pktcat pktcat.c */
+/* arm-linux-gnueabihf-gcc-9 -s -O2 -Wall -o pktcat pktcat.c -static -lpthread */
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -21,6 +21,8 @@ static int flag_ifidx = 0;
 static int flag_recv = 0;
 static int flag_send = 0;
 static int flag_ignore_outgoing = 0;
+static int flag_show_direction = 0;
+static int flag_quiet = 0;
 
 static const unsigned char hex2ch[] = "0123456789abcdef";
 static int ch2hex(int ch)
@@ -49,6 +51,9 @@ static int LOG(const char *fmt, ...) {
   static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
   va_list va;
   int rc = -1;
+
+  if (flag_quiet)
+    return 0;
 
   va_start(va, fmt);
   if (!pthread_mutex_lock(&m)) {
@@ -118,6 +123,9 @@ static void *ifpoll(void *p) {
             continue;
         }
 
+        if (flag_ignore_outgoing && addr.sll_pkttype == PACKET_OUTGOING)
+            continue;
+
         /* find vlan hdr to re-insert */
         for (cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
 			if (cmsg->cmsg_len < CMSG_LEN(sizeof(struct tpacket_auxdata)) ||
@@ -135,6 +143,14 @@ static void *ifpoll(void *p) {
               vlan_tpid = aux->tp_vlan_tpid;
 			vlan_tci = aux->tp_vlan_tci;
 		}
+
+        if (flag_show_direction) {
+            if (addr.sll_pkttype == PACKET_OUTGOING) {
+               fputs("O ", stdout);
+            } else {
+               fputs("I ", stdout);
+            }
+        }
 
         if (flag_ifidx) {
           printf("%d ", addr.sll_ifindex);
@@ -170,6 +186,24 @@ static void *ifpoll(void *p) {
     }
 }
 
+static void help(void) {
+    fputs("pktcat -rsdioq -b <interface> -h \n"
+           "Packet sniffer and sender for Linux. Writes packets received\n"
+           "from AF_PACKET raw socket to stdout in \"[I/O] <iface> <pkthex>\\n\" "
+           "format\nand writes packets received from stdin in "
+           "\"<iface> <pkthex>\\n\" format to\n"
+           "the socket\n"
+          "  -r read packets from the socket and write to stdout\n"
+          "  -s read packets from stdin and write them to the socket\n"
+          "  -d prepend the output packet lines with direction - (I)nput/(O)utput\n"
+          "  -i use interface indexes instead of iterface names\n"
+          "  -o ignore outgoing\n"
+          "  -q do not print errors to stderr\n"
+          "  -b bind to the interface (name or index, depending on -i)\n"
+          "  -h this help\n"
+          , stderr);
+}
+
 int main(int argc, char *argv[])
 {
     static unsigned char buf[32768];
@@ -193,15 +227,22 @@ int main(int argc, char *argv[])
                exit(1);
             }
             while (*++o) {
-               if (*o == 'i')
+               if (*o == 'h') {
+                  help();
+                  exit(0);
+               } else if (*o == 'i')
                  flag_ifidx = !flag_ifidx;
                else if (*o == 'r')
                  flag_recv = !flag_recv;
                else if (*o == 's')
                  flag_send = !flag_send;
+               else if (*o == 'd')
+                 flag_show_direction = !flag_show_direction;
+               else if (*o == 'q')
+                 flag_quiet = !flag_quiet;
                else if (*o == 'o') {
                  flag_ignore_outgoing = !flag_ignore_outgoing;
-               } else if (*o == 'I') {
+               } else if (*o == 'b') {
                  if (o[1] || !(bindifname = *++argv)) {
                    LOG("incomplete flag '%c'", *o);
                    exit(1);
@@ -227,14 +268,15 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+#if defined(PACKET_IGNORE_OUTGOING)
     if (flag_ignore_outgoing &&
         (setsockopt(fd, SOL_PACKET, PACKET_IGNORE_OUTGOING,
                     &(int){1}, sizeof(int)) < 0))
     {
         LOG("setsockopt(SOL_PACKET, PACKET_IGNORE_OUTGOING): %s",
             strerror(errno));
-        exit(1);
     }
+#endif
 
     if (bindifname) {
         if (ifid2idx(bindifname, &if_idx)) {
@@ -308,4 +350,3 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-
