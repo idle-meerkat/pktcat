@@ -1,6 +1,5 @@
 /* unlicense vboyko 2022 */
 /* arm-linux-musleabihf-cc -static -s -O2 -Wextra -Wall -pedantic -o pktcat pktcat.c */
-/* arm-linux-musleabihf-cc -static -s -O2 -Wextra -Wall -pedantic -o pktcat utils/pktcat.c */
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
